@@ -1,7 +1,6 @@
 
 package javasecurity;
 
-// SecurityApp.java
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -18,8 +17,8 @@ public class SecurityApp extends JFrame {
     
     // Database connection details
     private String url = "jdbc:mysql://localhost:3306/password_manager";
-    private String user = "root";  // Change this
-    private String password = "password";  // Change this
+    private String user = "root";
+    private String dbPassword = "";  // Changed to avoid variable conflict
     
     public SecurityApp() {
         createGUI();
@@ -27,13 +26,20 @@ public class SecurityApp extends JFrame {
     }
     
     public static void main(String[] args) {
-       
+          
+        // Create and show the application window
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                SecurityApp app = new SecurityApp();
+                app.setVisible(true);
+            }
+        });
     }
     
     private void connectToDatabase() {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
-            connection = DriverManager.getConnection(url, user, password);
+            connection = DriverManager.getConnection(url, user, dbPassword);
             showMessage("Connected to database successfully!");
         } catch (Exception e) {
             showMessage("Database connection failed: " + e.getMessage());
@@ -41,7 +47,7 @@ public class SecurityApp extends JFrame {
     }
     
     private void createGUI() {
-        setTitle("Simple Password Manager");
+        setTitle("Password Manager - Security App");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 600);
         setLocationRelativeTo(null);
@@ -183,7 +189,6 @@ public class SecurityApp extends JFrame {
         }
         
         try {
-            // Simple encryption - just for demonstration
             String encryptedPassword = simpleEncrypt(password);
             
             String sql = "INSERT INTO passwords (website, username, password, notes) VALUES (?, ?, ?, ?)";
@@ -218,7 +223,6 @@ public class SecurityApp extends JFrame {
                 String encryptedPassword = rs.getString("password");
                 String notes = rs.getString("notes");
                 
-                // Simple decryption
                 String password = simpleDecrypt(encryptedPassword);
                 
                 displayArea.append("ID: " + id + "\n");
@@ -288,41 +292,38 @@ public class SecurityApp extends JFrame {
         try {
             int id = Integer.parseInt(input.trim());
             
-            // Get current data
             String sql = "SELECT * FROM passwords WHERE id = ?";
             PreparedStatement stmt = connection.prepareStatement(sql);
             stmt.setInt(1, id);
             ResultSet rs = stmt.executeQuery();
             
             if (rs.next()) {
-                // Create update dialog
-                JTextField websiteField = new JTextField(rs.getString("website"));
-                JTextField usernameField = new JTextField(rs.getString("username"));
+                JTextField updateWebsiteField = new JTextField(rs.getString("website"));
+                JTextField updateUsernameField = new JTextField(rs.getString("username"));
                 String currentPassword = simpleDecrypt(rs.getString("password"));
-                JTextField passwordField = new JTextField(currentPassword);
-                JTextField notesField = new JTextField(rs.getString("notes"));
+                JTextField updatePasswordField = new JTextField(currentPassword);
+                JTextField updateNotesField = new JTextField(rs.getString("notes"));
                 
                 JPanel panel = new JPanel(new GridLayout(5, 2));
                 panel.add(new JLabel("Website:"));
-                panel.add(websiteField);
+                panel.add(updateWebsiteField);
                 panel.add(new JLabel("Username:"));
-                panel.add(usernameField);
+                panel.add(updateUsernameField);
                 panel.add(new JLabel("Password:"));
-                panel.add(passwordField);
+                panel.add(updatePasswordField);
                 panel.add(new JLabel("Notes:"));
-                panel.add(notesField);
+                panel.add(updateNotesField);
                 
                 int result = JOptionPane.showConfirmDialog(this, panel, 
                     "Update Password", JOptionPane.OK_CANCEL_OPTION);
                 
                 if (result == JOptionPane.OK_OPTION) {
-                    // Update the record
                     String updateSql = "UPDATE passwords SET website=?, username=?, password=?, notes=? WHERE id=?";
                     PreparedStatement updateStmt = connection.prepareStatement(updateSql);
-                    updateStmt.setString(1, websiteField.getText());
-                    updateStmt.setString(2, usernameField.getText());
-                    updateStmt.setString(3, simpleEncrypt(passwordField.getText()));
-                    updateStmt.setString(4, notesField.getText());
+                    updateStmt.setString(1, updateWebsiteField.getText());
+                    updateStmt.setString(2, updateUsernameField.getText());
+                    updateStmt.setString(3, simpleEncrypt(updatePasswordField.getText()));
+                    updateStmt.setString(4, updateNotesField.getText());
                     updateStmt.setInt(5, id);
                     
                     int rows = updateStmt.executeUpdate();
@@ -372,7 +373,7 @@ public class SecurityApp extends JFrame {
             showMessage("Error deleting password: " + e.getMessage());
         }
     }
-    
+    //yuh
     private void generatePassword() {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
         Random random = new Random();
@@ -385,20 +386,22 @@ public class SecurityApp extends JFrame {
         passwordField.setText(password.toString());
     }
     
-    // Simple encryption (for demonstration only - not secure for production)
+    // Simple encryption (for demonstration only)
     private String simpleEncrypt(String text) {
         StringBuilder result = new StringBuilder();
-        for (char c : text.toCharArray()) {
-            result.append((char)(c + 1)); // Simple shift by 1
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            result.append((char)(c + 1));
         }
         return result.toString();
     }
     
-    // Simple decryptionn
+    // Simple decryption
     private String simpleDecrypt(String text) {
         StringBuilder result = new StringBuilder();
-        for (char c : text.toCharArray()) {
-            result.append((char)(c - 1)); // Reverse the shift
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            result.append((char)(c - 1));
         }
         return result.toString();
     }
@@ -413,7 +416,5 @@ public class SecurityApp extends JFrame {
     private void showMessage(String message) {
         JOptionPane.showMessageDialog(this, message);
     }
-    
 }
-
 
