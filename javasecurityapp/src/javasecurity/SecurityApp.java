@@ -37,16 +37,37 @@ public class SecurityApp extends JFrame {
     }
     
     private void connectToDatabase() {
-  
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-           
-            connection = DriverManager.getConnection(url, user,password);
-            showMessage("Connected to database successfully!");
-        } catch (Exception e) {
-            showMessage("Database connection failed: " + e.getMessage());
-        }
+    try {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        connection = DriverManager.getConnection(url, user, password);
+        showMessage("Connected to database successfully!");
+        
+        // Create table immediately after connection
+        createPasswordsTable();
+        
+    } catch (Exception e) {
+        showMessage("Database connection failed: " + e.getMessage());
     }
+}
+// 
+private void createPasswordsTable() {
+    try {
+        String createTableSQL = 
+            "CREATE TABLE IF NOT EXISTS passwords (" +
+            "id INT AUTO_INCREMENT PRIMARY KEY, " +
+            "website VARCHAR(255) NOT NULL, " +
+            "username VARCHAR(255) NOT NULL, " +
+            "password VARCHAR(255) NOT NULL, " +
+            "notes TEXT, " +
+            "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)";
+        
+        Statement stmt = connection.createStatement();
+        stmt.execute(createTableSQL);
+        stmt.close();
+    } catch (SQLException e) {
+        System.out.println("Note: " + e.getMessage());
+    }
+}
     
     private void createGUI() {
         setTitle("Password Manager - Security App");
