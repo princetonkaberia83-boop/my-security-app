@@ -16,9 +16,9 @@ public class SecurityApp extends JFrame {
     private Connection connection;
     
     // Database connection details
-    private String url = "jdbc:mysql://localhost:3306/password_manager";
+    private String url = "jdbc:mysql://localhost:3306/mysql?zeroDateTimeBehavior=CONVERT_TO_NULL" ;
     private String user = "root";
-    private String dbPassword = "";  // Changed to avoid variable conflict
+    private String password = "";  
     
     public SecurityApp() {
         createGUI();
@@ -37,9 +37,11 @@ public class SecurityApp extends JFrame {
     }
     
     private void connectToDatabase() {
+  
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
-            connection = DriverManager.getConnection(url, user, dbPassword);
+           
+            connection = DriverManager.getConnection(url, user,password);
             showMessage("Connected to database successfully!");
         } catch (Exception e) {
             showMessage("Database connection failed: " + e.getMessage());
@@ -386,7 +388,7 @@ public class SecurityApp extends JFrame {
         passwordField.setText(password.toString());
     }
     
-    // Simple encryption (for demonstration only)
+    // encryption 
     private String simpleEncrypt(String text) {
         StringBuilder result = new StringBuilder();
         for (int i = 0; i < text.length(); i++) {
