@@ -1,4 +1,3 @@
-
 package javasecurity;
 
 import javax.swing.*;
@@ -9,25 +8,26 @@ import java.sql.*;
 import java.util.Random;
 
 public class SecurityApp extends JFrame {
-    private JTextField websiteField, usernameField, passwordField, searchField;
+    private JTextField websiteField, usernameField, passwordField, searchField, categoryField;
     private JTextArea notesArea;
     private JTextArea displayArea;
     private JButton addButton, viewButton, updateButton, deleteButton, searchButton, generateButton;
     private Connection connection;
     
-    // Database connection details
-    private String url = "jdbc:mysql://localhost:3306/mysql?zeroDateTimeBehavior=CONVERT_TO_NULL" ;
+    // Database connection 
+    private String url = "jdbc:mysql://localhost:3306/mysql?zeroDateTimeBehavior=CONVERT_TO_NULL";
     private String user = "root";
     private String password = "";  
     
+    // Constructor 
     public SecurityApp() {
         createGUI();
         connectToDatabase();
     }
     
+    // Main Method 
     public static void main(String[] args) {
-          
-        // Create and show the application window
+        // Creates and shows application window
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 SecurityApp app = new SecurityApp();
@@ -36,38 +36,37 @@ public class SecurityApp extends JFrame {
         });
     }
     
+    // Database Connection
     private void connectToDatabase() {
-    try {
-        Class.forName("com.mysql.cj.jdbc.Driver");
-        connection = DriverManager.getConnection(url, user, password);
-        showMessage("Connected to database successfully!");
-        
-        // Create table immediately after connection
-        createPasswordsTable();
-        
-    } catch (Exception e) {
-        showMessage("Database connection failed: " + e.getMessage());
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            connection = DriverManager.getConnection(url, user, password);
+            showMessage("Connected to database successfully!");
+                       createPasswordsTable();
+        } catch (Exception e) {
+            showMessage("Database connection failed: " + e.getMessage());
+        }
     }
-}
-// 
-private void createPasswordsTable() {
-    try {
-        String createTableSQL = 
-            "CREATE TABLE IF NOT EXISTS passwords (" +
-            "id INT AUTO_INCREMENT PRIMARY KEY, " +
-            "website VARCHAR(255) NOT NULL, " +
-            "username VARCHAR(255) NOT NULL, " +
-            "password VARCHAR(255) NOT NULL, " +
-            "notes TEXT, " +
-            "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)";
-        
-        Statement stmt = connection.createStatement();
-        stmt.execute(createTableSQL);
-        stmt.close();
-    } catch (SQLException e) {
-        System.out.println("Note: " + e.getMessage());
+    
+    private void createPasswordsTable() {
+        try {
+            String createTableSQL = 
+                "CREATE TABLE IF NOT EXISTS passwords (" +
+                "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                "website VARCHAR(255) NOT NULL, " +
+                "username VARCHAR(255) NOT NULL, " +
+                "password VARCHAR(255) NOT NULL, " +
+                "category VARCHAR(255), " +
+                "notes TEXT, " +
+                "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)";
+            
+            Statement stmt = connection.createStatement();
+            stmt.execute(createTableSQL);
+            stmt.close();
+        } catch (SQLException e) {
+            System.out.println("Note: " + e.getMessage());
+        }
     }
-}
     
     private void createGUI() {
         setTitle("Password Manager - Security App");
@@ -90,7 +89,7 @@ private void createPasswordsTable() {
     }
     
     private JPanel createAddPanel() {
-        JPanel panel = new JPanel(new GridLayout(6, 2, 10, 10));
+        JPanel panel = new JPanel(new GridLayout(7, 2, 10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         
         // Website
@@ -111,6 +110,11 @@ private void createPasswordsTable() {
         passwordPanel.add(passwordField, BorderLayout.CENTER);
         passwordPanel.add(generateButton, BorderLayout.EAST);
         panel.add(passwordPanel);
+        
+        // Category
+        panel.add(new JLabel("Category:"));
+        categoryField = new JTextField();
+        panel.add(categoryField);
         
         // Notes
         panel.add(new JLabel("Notes:"));
@@ -204,6 +208,7 @@ private void createPasswordsTable() {
         String website = websiteField.getText().trim();
         String username = usernameField.getText().trim();
         String password = passwordField.getText().trim();
+        String category = categoryField.getText().trim();
         String notes = notesArea.getText().trim();
         
         if (website.isEmpty() || username.isEmpty() || password.isEmpty()) {
@@ -214,12 +219,13 @@ private void createPasswordsTable() {
         try {
             String encryptedPassword = simpleEncrypt(password);
             
-            String sql = "INSERT INTO passwords (website, username, password, notes) VALUES (?, ?, ?, ?)";
+            String sql = "INSERT INTO passwords (website, username, password, category, notes) VALUES (?, ?, ?, ?, ?)";
             PreparedStatement stmt = connection.prepareStatement(sql);
             stmt.setString(1, website);
             stmt.setString(2, username);
             stmt.setString(3, encryptedPassword);
-            stmt.setString(4, notes);
+            stmt.setString(4, category.isEmpty() ? "General" : category);
+            stmt.setString(5, notes);
             
             int rows = stmt.executeUpdate();
             if (rows > 0) {
@@ -234,7 +240,7 @@ private void createPasswordsTable() {
     
     private void viewAllPasswords() {
         try {
-            String sql = "SELECT * FROM passwords ORDER BY website";
+            String sql = "SELECT * FROM passwords ORDER BY category, website";
             Statement stmt = connection.createStatement();
             ResultSet rs = stmt.executeQuery(sql);
             
@@ -244,6 +250,7 @@ private void createPasswordsTable() {
                 String website = rs.getString("website");
                 String username = rs.getString("username");
                 String encryptedPassword = rs.getString("password");
+                String category = rs.getString("category");
                 String notes = rs.getString("notes");
                 
                 String password = simpleDecrypt(encryptedPassword);
@@ -252,6 +259,7 @@ private void createPasswordsTable() {
                 displayArea.append("Website: " + website + "\n");
                 displayArea.append("Username: " + username + "\n");
                 displayArea.append("Password: " + password + "\n");
+                displayArea.append("Category: " + (category != null ? category : "General") + "\n");
                 displayArea.append("Notes: " + (notes != null ? notes : "") + "\n");
                 displayArea.append("------------------------\n");
             }
@@ -270,10 +278,11 @@ private void createPasswordsTable() {
         }
         
         try {
-            String sql = "SELECT * FROM passwords WHERE website LIKE ? OR username LIKE ? ORDER BY website";
+            String sql = "SELECT * FROM passwords WHERE website LIKE ? OR username LIKE ? OR category LIKE ? ORDER BY category, website";
             PreparedStatement stmt = connection.prepareStatement(sql);
             stmt.setString(1, "%" + searchTerm + "%");
             stmt.setString(2, "%" + searchTerm + "%");
+            stmt.setString(3, "%" + searchTerm + "%");
             
             ResultSet rs = stmt.executeQuery();
             
@@ -285,6 +294,7 @@ private void createPasswordsTable() {
                 String website = rs.getString("website");
                 String username = rs.getString("username");
                 String encryptedPassword = rs.getString("password");
+                String category = rs.getString("category");
                 String notes = rs.getString("notes");
                 
                 String password = simpleDecrypt(encryptedPassword);
@@ -293,6 +303,7 @@ private void createPasswordsTable() {
                 displayArea.append("Website: " + website + "\n");
                 displayArea.append("Username: " + username + "\n");
                 displayArea.append("Password: " + password + "\n");
+                displayArea.append("Category: " + (category != null ? category : "General") + "\n");
                 displayArea.append("Notes: " + (notes != null ? notes : "") + "\n");
                 displayArea.append("------------------------\n");
             }
@@ -325,15 +336,18 @@ private void createPasswordsTable() {
                 JTextField updateUsernameField = new JTextField(rs.getString("username"));
                 String currentPassword = simpleDecrypt(rs.getString("password"));
                 JTextField updatePasswordField = new JTextField(currentPassword);
+                JTextField updateCategoryField = new JTextField(rs.getString("category"));
                 JTextField updateNotesField = new JTextField(rs.getString("notes"));
                 
-                JPanel panel = new JPanel(new GridLayout(5, 2));
+                JPanel panel = new JPanel(new GridLayout(6, 2));
                 panel.add(new JLabel("Website:"));
                 panel.add(updateWebsiteField);
                 panel.add(new JLabel("Username:"));
                 panel.add(updateUsernameField);
                 panel.add(new JLabel("Password:"));
                 panel.add(updatePasswordField);
+                panel.add(new JLabel("Category:"));
+                panel.add(updateCategoryField);
                 panel.add(new JLabel("Notes:"));
                 panel.add(updateNotesField);
                 
@@ -341,13 +355,14 @@ private void createPasswordsTable() {
                     "Update Password", JOptionPane.OK_CANCEL_OPTION);
                 
                 if (result == JOptionPane.OK_OPTION) {
-                    String updateSql = "UPDATE passwords SET website=?, username=?, password=?, notes=? WHERE id=?";
+                    String updateSql = "UPDATE passwords SET website=?, username=?, password=?, category=?, notes=? WHERE id=?";
                     PreparedStatement updateStmt = connection.prepareStatement(updateSql);
                     updateStmt.setString(1, updateWebsiteField.getText());
                     updateStmt.setString(2, updateUsernameField.getText());
                     updateStmt.setString(3, simpleEncrypt(updatePasswordField.getText()));
-                    updateStmt.setString(4, updateNotesField.getText());
-                    updateStmt.setInt(5, id);
+                    updateStmt.setString(4, updateCategoryField.getText());
+                    updateStmt.setString(5, updateNotesField.getText());
+                    updateStmt.setInt(6, id);
                     
                     int rows = updateStmt.executeUpdate();
                     if (rows > 0) {
@@ -396,7 +411,7 @@ private void createPasswordsTable() {
             showMessage("Error deleting password: " + e.getMessage());
         }
     }
-    //yuh
+    
     private void generatePassword() {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
         Random random = new Random();
@@ -409,7 +424,7 @@ private void createPasswordsTable() {
         passwordField.setText(password.toString());
     }
     
-    // encryption 
+    // Simple encryption 
     private String simpleEncrypt(String text) {
         StringBuilder result = new StringBuilder();
         for (int i = 0; i < text.length(); i++) {
@@ -433,6 +448,7 @@ private void createPasswordsTable() {
         websiteField.setText("");
         usernameField.setText("");
         passwordField.setText("");
+        categoryField.setText("");
         notesArea.setText("");
     }
     
@@ -440,4 +456,3 @@ private void createPasswordsTable() {
         JOptionPane.showMessageDialog(this, message);
     }
 }
-
