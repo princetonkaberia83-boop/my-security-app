@@ -8,16 +8,20 @@ import java.sql.*;
 import java.util.Random;
 
 public class SecurityApp extends JFrame {
-    private JTextField websiteField, usernameField, passwordField, searchField, categoryField;
+    private JTextField websiteField, usernameField, passwordField, searchField;
+    private JComboBox<String> categoryComboBox;
     private JTextArea notesArea;
     private JTextArea displayArea;
     private JButton addButton, viewButton, updateButton, deleteButton, searchButton, generateButton;
     private Connection connection;
     
-    // Database connection 
+    // Database connection details
     private String url = "jdbc:mysql://localhost:3306/mysql?zeroDateTimeBehavior=CONVERT_TO_NULL";
     private String user = "root";
     private String password = "";  
+    
+    // Categories
+    private String[] categories = {"Personal", "Work", "Social Media", "Shopping", "Entertainment", "Education", "Other"};
     
     // Constructor 
     public SecurityApp() {
@@ -27,7 +31,7 @@ public class SecurityApp extends JFrame {
     
     // Main Method 
     public static void main(String[] args) {
-        // Creates and shows application window
+        // Create and show the application window
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 SecurityApp app = new SecurityApp();
@@ -42,7 +46,8 @@ public class SecurityApp extends JFrame {
             Class.forName("com.mysql.cj.jdbc.Driver");
             connection = DriverManager.getConnection(url, user, password);
             showMessage("Connected to database successfully!");
-                       createPasswordsTable();
+            // Create table immediately after connection
+            createPasswordsTable();
         } catch (Exception e) {
             showMessage("Database connection failed: " + e.getMessage());
         }
@@ -113,8 +118,9 @@ public class SecurityApp extends JFrame {
         
         // Category
         panel.add(new JLabel("Category:"));
-        categoryField = new JTextField();
-        panel.add(categoryField);
+        categoryComboBox = new JComboBox<>(categories);
+        categoryComboBox.setEditable(false); 
+        panel.add(categoryComboBox);
         
         // Notes
         panel.add(new JLabel("Notes:"));
@@ -208,7 +214,7 @@ public class SecurityApp extends JFrame {
         String website = websiteField.getText().trim();
         String username = usernameField.getText().trim();
         String password = passwordField.getText().trim();
-        String category = categoryField.getText().trim();
+        String category = (String) categoryComboBox.getSelectedItem();
         String notes = notesArea.getText().trim();
         
         if (website.isEmpty() || username.isEmpty() || password.isEmpty()) {
@@ -224,7 +230,7 @@ public class SecurityApp extends JFrame {
             stmt.setString(1, website);
             stmt.setString(2, username);
             stmt.setString(3, encryptedPassword);
-            stmt.setString(4, category.isEmpty() ? "General" : category);
+            stmt.setString(4, category);
             stmt.setString(5, notes);
             
             int rows = stmt.executeUpdate();
@@ -259,7 +265,7 @@ public class SecurityApp extends JFrame {
                 displayArea.append("Website: " + website + "\n");
                 displayArea.append("Username: " + username + "\n");
                 displayArea.append("Password: " + password + "\n");
-                displayArea.append("Category: " + (category != null ? category : "General") + "\n");
+                displayArea.append("Category: " + (category != null ? category : "Personal") + "\n");
                 displayArea.append("Notes: " + (notes != null ? notes : "") + "\n");
                 displayArea.append("------------------------\n");
             }
@@ -303,7 +309,7 @@ public class SecurityApp extends JFrame {
                 displayArea.append("Website: " + website + "\n");
                 displayArea.append("Username: " + username + "\n");
                 displayArea.append("Password: " + password + "\n");
-                displayArea.append("Category: " + (category != null ? category : "General") + "\n");
+                displayArea.append("Category: " + (category != null ? category : "Personal") + "\n");
                 displayArea.append("Notes: " + (notes != null ? notes : "") + "\n");
                 displayArea.append("------------------------\n");
             }
@@ -336,7 +342,13 @@ public class SecurityApp extends JFrame {
                 JTextField updateUsernameField = new JTextField(rs.getString("username"));
                 String currentPassword = simpleDecrypt(rs.getString("password"));
                 JTextField updatePasswordField = new JTextField(currentPassword);
-                JTextField updateCategoryField = new JTextField(rs.getString("category"));
+                
+                JComboBox<String> updateCategoryComboBox = new JComboBox<>(categories);
+                String currentCategory = rs.getString("category");
+                if (currentCategory != null) {
+                    updateCategoryComboBox.setSelectedItem(currentCategory);
+                }
+                
                 JTextField updateNotesField = new JTextField(rs.getString("notes"));
                 
                 JPanel panel = new JPanel(new GridLayout(6, 2));
@@ -347,7 +359,7 @@ public class SecurityApp extends JFrame {
                 panel.add(new JLabel("Password:"));
                 panel.add(updatePasswordField);
                 panel.add(new JLabel("Category:"));
-                panel.add(updateCategoryField);
+                panel.add(updateCategoryComboBox);
                 panel.add(new JLabel("Notes:"));
                 panel.add(updateNotesField);
                 
@@ -360,7 +372,7 @@ public class SecurityApp extends JFrame {
                     updateStmt.setString(1, updateWebsiteField.getText());
                     updateStmt.setString(2, updateUsernameField.getText());
                     updateStmt.setString(3, simpleEncrypt(updatePasswordField.getText()));
-                    updateStmt.setString(4, updateCategoryField.getText());
+                    updateStmt.setString(4, (String) updateCategoryComboBox.getSelectedItem());
                     updateStmt.setString(5, updateNotesField.getText());
                     updateStmt.setInt(6, id);
                     
@@ -448,7 +460,7 @@ public class SecurityApp extends JFrame {
         websiteField.setText("");
         usernameField.setText("");
         passwordField.setText("");
-        categoryField.setText("");
+        categoryComboBox.setSelectedIndex(0); // Reset to first category
         notesArea.setText("");
     }
     
