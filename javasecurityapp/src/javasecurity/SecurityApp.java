@@ -23,10 +23,23 @@ public class SecurityApp extends JFrame {
     // Categories
     private String[] categories = {"Personal", "Work", "Social Media", "Shopping", "Entertainment", "Education", "Other"};
     
+    // Master Password 
+    private MasterPassword masterPassword;
+    
     // Constructor 
-    public SecurityApp() {
-        createGUI();
+    
+       public SecurityApp() {
         connectToDatabase();
+        initializeMasterPassword();
+        
+        // Show login dialog before creating GUI
+        if (!showLoginDialog()) {
+            // If login failed, exit application
+            JOptionPane.showMessageDialog(null, "Login failed. Application will exit.");
+            System.exit(0);
+        }
+        
+        createGUI();
     }
     
     // Main Method 
@@ -38,6 +51,37 @@ public class SecurityApp extends JFrame {
                 app.setVisible(true);
             }
         });
+    }
+    
+    // Show login dialog and verify master password
+    private boolean showLoginDialog() {
+        JPasswordField passwordField = new JPasswordField(15);
+        
+        // You can customize this dialog as needed
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(new JLabel("Enter Master Password:"), BorderLayout.NORTH);
+        panel.add(passwordField, BorderLayout.CENTER);
+        
+        int option = JOptionPane.showConfirmDialog(null, panel, 
+            "Password Manager Login", JOptionPane.OK_CANCEL_OPTION);
+        
+        if (option == JOptionPane.OK_OPTION) {
+            char[] passwordChars = passwordField.getPassword();
+            String enteredPassword = new String(passwordChars);
+            
+            // Clear the password from memory
+            java.util.Arrays.fill(passwordChars, '0');
+            
+            return masterPassword.verifyMasterPassword(enteredPassword);
+        }
+        
+        return false; // User cancelled
+    }
+    
+    // Initialize master password system
+    private void initializeMasterPassword() {
+        masterPassword = new MasterPassword(connection);
+        masterPassword.initializeMasterPassword();
     }
     
     // Database Connection
@@ -78,6 +122,15 @@ public class SecurityApp extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 600);
         setLocationRelativeTo(null);
+        
+        // Create menu bar
+        JMenuBar menuBar = new JMenuBar();
+        JMenu securityMenu = new JMenu("Security");
+        JMenuItem changeMasterPasswordItem = new JMenuItem("Change Master Password");
+        changeMasterPasswordItem.addActionListener(e -> masterPassword.changeMasterPassword());
+        securityMenu.add(changeMasterPasswordItem);
+        menuBar.add(securityMenu);
+        setJMenuBar(menuBar);
         
         // Main panel with tabs
         JTabbedPane tabbedPane = new JTabbedPane();
@@ -223,7 +276,7 @@ public class SecurityApp extends JFrame {
         }
         
         try {
-            String encryptedPassword = simpleEncrypt(password);
+            String encryptedPassword = Encrypt(password);
             
             String sql = "INSERT INTO passwords (website, username, password, category, notes) VALUES (?, ?, ?, ?, ?)";
             PreparedStatement stmt = connection.prepareStatement(sql);
@@ -259,7 +312,7 @@ public class SecurityApp extends JFrame {
                 String category = rs.getString("category");
                 String notes = rs.getString("notes");
                 
-                String password = simpleDecrypt(encryptedPassword);
+                String password = Decrypt(encryptedPassword);
                 
                 displayArea.append("ID: " + id + "\n");
                 displayArea.append("Website: " + website + "\n");
@@ -303,7 +356,7 @@ public class SecurityApp extends JFrame {
                 String category = rs.getString("category");
                 String notes = rs.getString("notes");
                 
-                String password = simpleDecrypt(encryptedPassword);
+                String password = Decrypt(encryptedPassword);
                 
                 displayArea.append("ID: " + id + "\n");
                 displayArea.append("Website: " + website + "\n");
@@ -340,7 +393,7 @@ public class SecurityApp extends JFrame {
             if (rs.next()) {
                 JTextField updateWebsiteField = new JTextField(rs.getString("website"));
                 JTextField updateUsernameField = new JTextField(rs.getString("username"));
-                String currentPassword = simpleDecrypt(rs.getString("password"));
+                String currentPassword = Decrypt(rs.getString("password"));
                 JTextField updatePasswordField = new JTextField(currentPassword);
                 
                 JComboBox<String> updateCategoryComboBox = new JComboBox<>(categories);
@@ -371,7 +424,7 @@ public class SecurityApp extends JFrame {
                     PreparedStatement updateStmt = connection.prepareStatement(updateSql);
                     updateStmt.setString(1, updateWebsiteField.getText());
                     updateStmt.setString(2, updateUsernameField.getText());
-                    updateStmt.setString(3, simpleEncrypt(updatePasswordField.getText()));
+                    updateStmt.setString(3, Encrypt(updatePasswordField.getText()));
                     updateStmt.setString(4, (String) updateCategoryComboBox.getSelectedItem());
                     updateStmt.setString(5, updateNotesField.getText());
                     updateStmt.setInt(6, id);
@@ -436,8 +489,8 @@ public class SecurityApp extends JFrame {
         passwordField.setText(password.toString());
     }
     
-    // Simple encryption 
-    private String simpleEncrypt(String text) {
+    // Encryption 
+    private String Encrypt(String text) {
         StringBuilder result = new StringBuilder();
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
@@ -446,8 +499,8 @@ public class SecurityApp extends JFrame {
         return result.toString();
     }
     
-    // Simple decryption
-    private String simpleDecrypt(String text) {
+    //  Decryption
+    private String Decrypt(String text) {
         StringBuilder result = new StringBuilder();
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
