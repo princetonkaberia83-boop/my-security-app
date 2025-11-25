@@ -16,7 +16,7 @@ public class SecurityApp extends JFrame {
     private Connection connection;
     
     // Database connection details
-    private String url = "jdbc:mysql://localhost:3306/mysql?zeroDateTimeBehavior=CONVERT_TO_NULL";
+    private String url = "jdbc:mysql://localhost:3306/password_manager?zeroDateTimeBehavior=CONVERT_TO_NULL&useSSL=false";
     private String user = "root";
     private String password = "";  
     
